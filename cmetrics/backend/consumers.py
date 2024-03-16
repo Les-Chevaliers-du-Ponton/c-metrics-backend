@@ -10,6 +10,8 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 import os
 
+from cmetrics.utils.helpers import get_available_redis_streams
+
 load_dotenv()
 
 
@@ -64,7 +66,7 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
         client_channels = list()
         validated_channels = list()
         failed_channels = list()
-        streams = await helpers.get_available_redis_streams(self.redis_server)
+        streams = await get_available_redis_streams(self.redis_server)
         if not streams:
             LOG.error("The real time service is down")
         else:

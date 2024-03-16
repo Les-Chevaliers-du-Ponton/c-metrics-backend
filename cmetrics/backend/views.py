@@ -115,7 +115,7 @@ def get_public_trades(request: django.core.handlers.wsgi.WSGIRequest):
         data = exchange.fetch_trades(symbol=pair, limit=1000)
     except errors.BadSymbol:
         data = None
-    return django.http.JsonResponse(None, safe=False)
+    return django.http.JsonResponse(data, safe=False)
 
 
 @csrf_exempt
