@@ -1,13 +1,13 @@
 Django==5.0.3
 django-environ==0.11.2
 python-dotenv==1.0.1
-djangorestframework==3.14.0
+djangorestframework==3.15.0
 django-cors-headers==4.3.1
 ccxt==4.2.59
 GoogleNews==1.6.13
 pandas==2.2.1
 redis==5.0.3
-sqlalchemy==2.0.27
+sqlalchemy==2.0.28
 channels[daphne]
 psycopg2-binary==2.9.9
 gunicorn==20.1.0
