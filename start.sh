@@ -8,7 +8,3 @@
 
 # docker stop cmetrics-api
 docker start cmetrics-api
-
-
-# daphne -p 8001 cmetrics.backend.asgi:application
-# FOR PROD
