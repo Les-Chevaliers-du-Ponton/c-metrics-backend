@@ -65,6 +65,18 @@ async def get_order_book(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse(order_book_data, safe=False)
 
 
+async def get_public_trades(request: django.core.handlers.wsgi.WSGIRequest):
+    exchange = request.GET.get("exchange")
+    pair = request.GET.get("pair")
+    exchange = get_exchange_object(exchange)
+    try:
+        data = await exchange.fetch_trades(symbol=pair, limit=1000)
+    except errors.BadSymbol:
+        data = None
+    await exchange.close()
+    return django.http.JsonResponse(data, safe=False)
+
+
 async def get_asset_coinmarketcap_mapping(
     request: django.core.handlers.wsgi.WSGIRequest,
 ):
@@ -91,7 +103,9 @@ async def get_crypto_meta_data(request: django.core.handlers.wsgi.WSGIRequest):
 async def get_exchange_markets(request: django.core.handlers.wsgi.WSGIRequest):
     exchange = request.GET.get("exchange")
     exchange = get_exchange_object(exchange)
-    return django.http.JsonResponse(exchange.load_markets(), safe=False)
+    markets = await exchange.load_markets()
+    await exchange.close()
+    return django.http.JsonResponse(markets, safe=False)
 
 
 async def get_news(request: django.core.handlers.wsgi.WSGIRequest):
@@ -104,17 +118,6 @@ async def get_news(request: django.core.handlers.wsgi.WSGIRequest):
         for article in data
         if isinstance(article["datetime"], dt) and article["datetime"] <= dt.now()
     ]
-    return django.http.JsonResponse(data, safe=False)
-
-
-def get_public_trades(request: django.core.handlers.wsgi.WSGIRequest):
-    exchange = request.GET.get("exchange")
-    pair = request.GET.get("pair")
-    exchange = get_exchange_object(exchange)
-    try:
-        data = exchange.fetch_trades(symbol=pair, limit=1000)
-    except errors.BadSymbol:
-        data = None
     return django.http.JsonResponse(data, safe=False)
 
 

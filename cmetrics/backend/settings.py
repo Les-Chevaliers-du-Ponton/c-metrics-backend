@@ -19,7 +19,9 @@ import os
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv()
 
+DEBUG = True
 SECRET_KEY = os.environ["SECRET_KEY"]
+ALLOWED_HOSTS = ["34.232.77.96", "127.0.0.1", os.environ["HOST"]]
 
 
 # Quick-start development settings - unsuitable for production
@@ -28,10 +30,6 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
-ALLOWED_HOSTS = ["127.0.0.1", os.environ["HOST"]]
-CORS_ORIGIN_WHITELIST = ALLOWED_HOSTS
-
 
 # Application definition
 
@@ -42,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "django.contrib.staticfiles",
     "cmetrics",
 ]
 
@@ -53,6 +52,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = "cmetrics.backend.urls"
@@ -119,8 +119,17 @@ USE_I18N = True
 
 USE_TZ = True
 
+STATIC_URL = "static/"
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# TODO: review below before PROD
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
+SESSION_COOKIE_SAMESITE = "None"
+SESSION_COOKIE_SECURE = True
