@@ -24,10 +24,11 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
-        self.redis_server = async_redis.StrictRedis(
-            host=os.environ["HOST"],
+        self.redis_server = async_redis.Redis(
+            host=os.environ["REDIS_HOST"],
             port=os.environ["REDIS_PORT"],
             decode_responses=True,
+            ssl=True,
         )
         self.errors = list()
         self.client_parmas = await self.get_client_params()
