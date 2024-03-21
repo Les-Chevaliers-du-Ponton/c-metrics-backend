@@ -74,7 +74,8 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
             client_pairs = self.client_parmas.get("pairs", "").split(",")
             for pair in client_pairs:
                 for method in methods:
-                    client_channels.append(f"{method}-{pair}")
+                    key = '{real-time}-' + f"{method}-{pair}"
+                    client_channels.append(key)
             for channel in client_channels:
                 (
                     validated_channels.append(channel)
