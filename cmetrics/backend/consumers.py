@@ -17,19 +17,21 @@ load_dotenv()
 
 LOG = logging.getLogger(__name__)
 
+REDIS = async_redis.Redis(
+host=os.environ["REDIS_HOST"],
+port=os.environ["REDIS_PORT"],
+decode_responses=True
+)
+
 
 class PublicLiveDataStream(AsyncWebsocketConsumer):
     """
-    Exposes data on: ws://127.0.0.1:8000/ws/live_data/?pairs=EXCHANGE-BASE-QUOTE
+    Exposes data on:
+    - LOCAL: ws://127.0.0.1:8000/ws/live_data/?pairs=EXCHANGE-BASE-QUOTE
+    - PROD:  ws://18.205.192.229:8000/ws/live_data/?pairs=EXCHANGE-BASE-QUOTE
     """
 
     async def connect(self):
-        self.redis_server = async_redis.Redis(
-            host=os.environ["REDIS_HOST"],
-            port=os.environ["REDIS_PORT"],
-            decode_responses=True,
-            ssl=True,
-        )
         self.errors = list()
         self.client_parmas = await self.get_client_params()
         self.client_streams = await self.get_valid_channels()
@@ -56,7 +58,7 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
     async def serve_client_data(self):
         while True:
             streams = {stream: "$" for stream in self.client_streams}
-            data = await self.redis_server.xread(streams=streams, block=0)
+            data = await REDIS.xread(streams=streams, block=0)
             data = data[0][1]
             _, latest_record = data[len(data) - 1]
             await self.send(text_data=json.dumps(latest_record))
@@ -67,7 +69,7 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
         client_channels = list()
         validated_channels = list()
         failed_channels = list()
-        streams = await get_available_redis_streams(self.redis_server)
+        streams = await get_available_redis_streams(REDIS)
         if not streams:
             LOG.error("The real time service is down")
         else:
@@ -101,11 +103,6 @@ class PrivateOrderStream(AsyncWebsocketConsumer):
     """
 
     async def connect(self):
-        self.redis_server = async_redis.StrictRedis(
-            host=os.environ["HOST"],
-            port=os.environ["REDIS_PORT"],
-            decode_responses=True,
-        )
         await self.accept()  # TODO: implement authorization
         await self.serve_client_data()
 

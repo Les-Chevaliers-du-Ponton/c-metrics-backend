@@ -22,7 +22,7 @@ load_dotenv()
 DEBUG = True
 SECRET_KEY = os.environ["SECRET_KEY"]
 # ALLOWED_HOSTS = ["34.232.77.96", "127.0.0.1", os.environ["HOST"]]
-ALLOWED_HOSTS = ['*'] # TODO: needs to be updated
+ALLOWED_HOSTS = ["*"]  # TODO: needs to be updated
 
 
 # Quick-start development settings - unsuitable for production
