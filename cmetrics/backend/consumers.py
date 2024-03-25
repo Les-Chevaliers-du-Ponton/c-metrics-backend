@@ -1,14 +1,12 @@
 import asyncio
 import json
 import logging
+import os
 
-from dotenv import load_dotenv
 import redis.asyncio as async_redis
-
 from channels import exceptions
 from channels.generic.websocket import AsyncWebsocketConsumer
-
-import os
+from dotenv import load_dotenv
 
 from cmetrics.utils.helpers import get_available_redis_streams
 
@@ -18,8 +16,8 @@ load_dotenv()
 LOG = logging.getLogger(__name__)
 
 REDIS = async_redis.Redis(
-    host=os.environ["REDIS_HOST"],
-    port=int(os.environ["REDIS_PORT"]),
+    host=os.environ.get("REDIS_HOST"),
+    port=int(os.environ.get("REDIS_PORT")),
     decode_responses=True,
 )
 
@@ -92,6 +90,32 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
         raise exceptions.StopConsumer()
 
     async def receive(self, text_data=None):
+        pass
+
+
+class ScreeningStream(AsyncWebsocketConsumer):
+    """
+    Exposes data on:
+    - PROD:  ws://18.205.192.229:8000/ws/screening/
+    """
+
+    async def connect(self):
+        await self.accept()
+        await self.serve_client_data()
+
+    async def serve_client_data(self):
+        while True:
+            streams = {"screening": "$"}
+            data = await REDIS.xread(streams=streams, block=0)
+            data = data[0][1]
+            _, latest_record = data[len(data) - 1]
+            await self.send(text_data=json.dumps(latest_record))
+            await asyncio.sleep(0)
+
+    async def disconnect(self, close_code):
+        raise exceptions.StopConsumer()
+
+    async def receive(self, text_data=None, **kwargs):
         pass
 
 
