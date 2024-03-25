@@ -1,15 +1,29 @@
 from rest_framework import serializers
 
-from .models import Orders, Trades
+from .models import Orders, Trades, CoinMarketCapMetaData, CoinMarketCapMapping
 
 
-class OrdersSerializer(serializers.ModelSerializer):
+class BaseSerializer(serializers.ModelSerializer):
     class Meta:
+        abstract = True
+        fields = "__all__"
+
+
+class OrdersSerializer(BaseSerializer):
+    class Meta(BaseSerializer.Meta):
         model = Orders
-        fields = "__all__"
 
 
-class TradesSerializer(serializers.ModelSerializer):
-    class Meta:
+class TradesSerializer(BaseSerializer):
+    class Meta(BaseSerializer.Meta):
         model = Trades
-        fields = "__all__"
+
+
+class CoinMarketCapMetaDataSerializer(BaseSerializer):
+    class Meta(BaseSerializer.Meta):
+        model = CoinMarketCapMetaData
+
+
+class CoinMarketCapMappingSerializer(BaseSerializer):
+    class Meta(BaseSerializer.Meta):
+        model = CoinMarketCapMapping

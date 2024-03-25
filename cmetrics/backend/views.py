@@ -4,23 +4,24 @@ from datetime import datetime as dt
 
 import ccxt
 import django
+from GoogleNews import GoogleNews
 from asgiref.sync import sync_to_async
 from ccxt.base import errors
 from django.views.decorators.csrf import csrf_exempt
-from GoogleNews import GoogleNews
 from rest_framework import viewsets
+from rest_framework.response import Response
 
 from cmetrics.backend import models
+from cmetrics.backend import serializers
 from cmetrics.data_source.coinmarketcap import CoinMarketCap
 from cmetrics.utils.helpers import get_exchange_object
-from cmetrics.backend.serializers import OrdersSerializer, TradesSerializer
-
 
 coinmarketcap = CoinMarketCap()
 
 
 @csrf_exempt
 def login_view(request: django.core.handlers.wsgi.WSGIRequest):
+    # thomas_bouamoud
     username = request.POST.get("username")
     password = request.POST.get("password")
     user = django.contrib.auth.authenticate(
@@ -77,19 +78,6 @@ async def get_public_trades(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse(data, safe=False)
 
 
-
-async def get_crypto_meta_data(request: django.core.handlers.wsgi.WSGIRequest):
-    crypto_coinmarketcap_id = request.GET.get("crypto_coinmarketcap_id")
-    return django.http.JsonResponse(
-        coinmarketcap.get_endpoint(
-            api_version=2,
-            category="cryptocurrency",
-            endpoint=f"info?id={crypto_coinmarketcap_id}",
-        ),
-        safe=False,
-    )
-
-
 async def get_exchange_markets(request: django.core.handlers.wsgi.WSGIRequest):
     exchange = request.GET.get("exchange")
     exchange = get_exchange_object(exchange)
@@ -142,9 +130,9 @@ async def post_new_order(request: django.core.handlers.wsgi.WSGIRequest):
 async def cancel_order(request: django.core.handlers.wsgi.WSGIRequest):
     data = json.loads(request.body.decode("utf-8"))
     order_dim_key = data.get("order_dim_key")
-    order = Orders.objects.filter(order_dim_key=order_dim_key)
+    order = models.Orders.objects.filter(order_dim_key=order_dim_key)
     await sync_to_async(order.update)(expiration_tmstmp=dt.now())
-    new_row = Orders(
+    new_row = models.Orders(
         order_dim_key=str(uuid.uuid4()),
         user_id=order.values("user_id"),
         order_id=order.values("order_id"),
@@ -166,31 +154,34 @@ async def cancel_order(request: django.core.handlers.wsgi.WSGIRequest):
 
 
 class OrdersViewSet(viewsets.ModelViewSet):
-    queryset = models.Orders.objects.all()
-    serializer_class = OrdersSerializer
-
-    def get_queryset(self):
-        return models.Orders.objects.filter(expiration_tmstmp__isnull=True)
+    queryset = models.Orders.objects.filter(expiration_tmstmp__isnull=True)
+    serializer_class = serializers.OrdersSerializer
 
 
 class TradesViewSet(viewsets.ModelViewSet):
-    queryset = models.Trades.objects.all()
-    serializer_class = TradesSerializer
+    queryset = models.Trades.objects.filter(expiration_tmstmp__isnull=True)
+    serializer_class = serializers.TradesSerializer
+
+
+class CoinMarketCapMappingViewSet(viewsets.ModelViewSet):
+    queryset = models.CoinMarketCapMapping.objects.all()
+    serializer_class = serializers.CoinMarketCapMappingSerializer
+
+
+class CoinMarketCapMetaDataViewSet(viewsets.ModelViewSet):
+    serializer_class = serializers.CoinMarketCapMetaDataSerializer
 
     def get_queryset(self):
-        return models.Trades.objects.filter(expiration_tmstmp__isnull=True)
+        crypto_coinmarketcap_id = self.request.GET.get("crypto_coinmarketcap_id")
+        queryset = models.CoinMarketCapMetaData.objects.filter(id=crypto_coinmarketcap_id)
+        return queryset
 
-class CoinMarketCapViewSet(viewsets.ModelViewSet):
-    queryset = models.Trades.objects.all()
-    serializer_class = TradesSerializer
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
-    def get_queryset(self):
-        return models.Trades.objects.filter(expiration_tmstmp__isnull=True)
-
-async def get_asset_coinmarketcap_mapping(request: django.core.handlers.wsgi.WSGIRequest):
-    return django.http.JsonResponse(
-        coinmarketcap.get_endpoint(
-            api_version=1, category="cryptocurrency", endpoint="map"
-        ),
-        safe=False,
-    )
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
