@@ -26,12 +26,12 @@ urlpatterns = [
     path("exchanges/", views.get_exchanges, name="all_exchanges"),
     path(
         "coinmarketcap_info/",
-        views.get_asset_coinmarketcap_mapping,
+        views.CoinMarketCapMappingViewSet.as_view({"get": "list"}),
         name="coin_market_cap_info",
     ),
     path(
         "coinmarketcap_crypto_meta/",
-        views.get_crypto_meta_data,
+        views.CoinMarketCapMetaDataViewSet.as_view({"get": "list"}),
         name="coin_market_cap_crypto_meta",
     ),
     path("markets/", views.get_exchange_markets, name="exchange_markets"),
@@ -43,6 +43,7 @@ urlpatterns = [
     path("trades/", views.TradesViewSet.as_view({"get": "list"}), name="trades"),
     path("new_order/", views.post_new_order, name="new_order"),
     path("cancel_order/", views.cancel_order, name="cancel_order"),
+    path("log_in/", views.login_view, name="log_in"),
 ]
 
 websocket_urlpatterns = [
