@@ -73,3 +73,45 @@ class Trades(models.Model):
     trade_price = models.FloatField("Trade Price")
     insert_tmstmp = models.DateTimeField("Record Insert Timestamp")
     expiration_tmstmp = models.DateTimeField("Record Expiration Timestamp", null=True)
+
+
+class CoinMarketCapMapping(models.Model):
+    id = models.IntegerField("ID", primary_key=True)
+    rank = models.IntegerField("Rank")
+    name = models.CharField("Name")
+    symbol = models.CharField("Symbol")
+    slug = models.CharField("Slug")
+    is_active = models.IntegerField("Is Active")
+    first_historical_data = models.DateTimeField("First Historical Data")
+    last_historical_data = models.DateTimeField("Last Historical Data")
+    platform = models.CharField("Platform", null=True)
+    insert_tmstmp = models.DateTimeField("Record Insert Timestamp")
+
+
+class CoinMarketCapMetaData(models.Model):
+    id = models.IntegerField("ID", primary_key=True)
+    name = models.CharField("Name")
+    symbol = models.CharField("Symbol")
+    category = models.CharField("Category", null=True)
+    description = models.CharField("Description", null=True)
+    slug = models.CharField("Slug")
+    logo = models.CharField("Logo", null=True)
+    subreddit = models.CharField("Sub Reddit", null=True)
+    notice = models.CharField("Notice", null=True)
+    tags = models.CharField("Tags", null=True)
+    tag_names = models.CharField("Tag Names", null=True)
+    tag_groups = models.CharField("Tag Groups", null=True)
+    urls = models.CharField("Urls", null=True)
+    platform = models.CharField("Platform", null=True)
+    date_added = models.DateField("Date Added")
+    twitter_username = models.CharField("Twitter Username", null=True)
+    is_hidden = models.IntegerField("Is Hidden")
+    date_launched = models.DateField("Date Launched", null=True)
+    contract_address = models.CharField("Tags", null=True)
+    self_reported_circulating_supply = models.FloatField(
+        "Self Reported Circulating Supply", null=True
+    )
+    self_reported_tags = models.CharField("Self Reported Tags", null=True)
+    self_reported_market_cap = models.FloatField("Self Reported Market Cap", null=True)
+    infinite_supply = models.BooleanField("Is Hidden")
+    insert_tmstmp = models.DateTimeField("Record Insert Timestamp")

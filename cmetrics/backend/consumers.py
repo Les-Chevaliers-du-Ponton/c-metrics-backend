@@ -91,33 +91,7 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         raise exceptions.StopConsumer()
 
-    async def receive(self, text_data=None, **kwargs):
-        pass
-
-
-class ScreeningStream(AsyncWebsocketConsumer):
-    """
-    Exposes data on:
-    - PROD:  ws://18.205.192.229:8000/ws/screening/
-    """
-
-    async def connect(self):
-        await self.accept()
-        await self.serve_client_data()
-
-    async def serve_client_data(self):
-        while True:
-            streams = {"screening": "$"}
-            data = await REDIS.xread(streams=streams, block=0)
-            data = data[0][1]
-            _, latest_record = data[len(data) - 1]
-            await self.send(text_data=json.dumps(latest_record))
-            await asyncio.sleep(0)
-
-    async def disconnect(self, close_code):
-        raise exceptions.StopConsumer()
-
-    async def receive(self, text_data=None, **kwargs):
+    async def receive(self, text_data=None):
         pass
 
 
@@ -128,9 +102,10 @@ class PrivateOrderStream(AsyncWebsocketConsumer):
 
     async def connect(self):
         await self.accept()  # TODO: implement authorization
+        await self.serve_client_data()
 
     async def disconnect(self, close_code):
         pass
 
-    async def receive(self, text_data=None, **kwargs):
+    async def receive(self, text_data=None):
         pass

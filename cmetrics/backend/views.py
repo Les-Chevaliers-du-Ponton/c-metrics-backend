@@ -99,6 +99,7 @@ async def get_exchange_markets(request: django.core.handlers.wsgi.WSGIRequest):
 
 
 async def get_news(request: django.core.handlers.wsgi.WSGIRequest):
+    # TODO: find an alternative approach as Google News gets partially blocked on AWS
     pair = request.GET.get("search_term")
     googlenews = GoogleNews()
     googlenews.get_news(pair)
