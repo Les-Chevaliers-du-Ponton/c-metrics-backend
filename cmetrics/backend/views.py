@@ -10,7 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from GoogleNews import GoogleNews
 from rest_framework import viewsets
 
-from cmetrics.backend.models import Orders, Trades
+from cmetrics.backend import models
 from cmetrics.data_source.coinmarketcap import CoinMarketCap
 from cmetrics.utils.helpers import get_exchange_object
 from cmetrics.backend.serializers import OrdersSerializer, TradesSerializer
@@ -77,16 +77,6 @@ async def get_public_trades(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse(data, safe=False)
 
 
-async def get_asset_coinmarketcap_mapping(
-    request: django.core.handlers.wsgi.WSGIRequest,
-):
-    return django.http.JsonResponse(
-        coinmarketcap.get_endpoint(
-            api_version=1, category="cryptocurrency", endpoint="map"
-        ),
-        safe=False,
-    )
-
 
 async def get_crypto_meta_data(request: django.core.handlers.wsgi.WSGIRequest):
     crypto_coinmarketcap_id = request.GET.get("crypto_coinmarketcap_id")
@@ -124,7 +114,7 @@ async def get_news(request: django.core.handlers.wsgi.WSGIRequest):
 @csrf_exempt
 async def post_new_order(request: django.core.handlers.wsgi.WSGIRequest):
     data = json.loads(request.body.decode("utf-8"))
-    new_order = Orders(
+    new_order = models.Orders(
         order_dim_key=str(uuid.uuid4()),
         user_id=data.get("user_id"),
         order_id=str(uuid.uuid4()),
@@ -175,16 +165,31 @@ async def cancel_order(request: django.core.handlers.wsgi.WSGIRequest):
 
 
 class OrdersViewSet(viewsets.ModelViewSet):
-    queryset = Orders.objects.all()
+    queryset = models.Orders.objects.all()
     serializer_class = OrdersSerializer
 
     def get_queryset(self):
-        return Orders.objects.filter(expiration_tmstmp__isnull=True)
+        return models.Orders.objects.filter(expiration_tmstmp__isnull=True)
 
 
 class TradesViewSet(viewsets.ModelViewSet):
-    queryset = Trades.objects.all()
+    queryset = models.Trades.objects.all()
     serializer_class = TradesSerializer
 
     def get_queryset(self):
-        return Trades.objects.filter(expiration_tmstmp__isnull=True)
+        return models.Trades.objects.filter(expiration_tmstmp__isnull=True)
+
+class CoinMarketCapViewSet(viewsets.ModelViewSet):
+    queryset = models.Trades.objects.all()
+    serializer_class = TradesSerializer
+
+    def get_queryset(self):
+        return models.Trades.objects.filter(expiration_tmstmp__isnull=True)
+
+async def get_asset_coinmarketcap_mapping(request: django.core.handlers.wsgi.WSGIRequest):
+    return django.http.JsonResponse(
+        coinmarketcap.get_endpoint(
+            api_version=1, category="cryptocurrency", endpoint="map"
+        ),
+        safe=False,
+    )
