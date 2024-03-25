@@ -1,8 +1,8 @@
 import json
+import os
 
 from dotenv import load_dotenv
 from requests import Session
-import os
 
 load_dotenv()
 

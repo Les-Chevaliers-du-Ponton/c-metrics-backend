@@ -1,9 +1,9 @@
+import os
+
 import django
+import redis.asyncio as async_redis
 from ccxt import async_support as async_ccxt
 from dotenv import load_dotenv
-import os
-import redis.asyncio as async_redis
-
 
 load_dotenv()
 
