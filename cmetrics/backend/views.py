@@ -29,6 +29,7 @@ def login_view(request: ASGIRequest):
     username = request.POST.get("username")
     password = request.POST.get("password")
     user = auth.authenticate(request, username=username, password=password)
+    print(user)
     if user is not None:
         auth.login(request, user)
         return http.JsonResponse({"result": "ok"}, safe=False)
@@ -42,8 +43,8 @@ async def get_exchanges(request: ASGIRequest):
 
 
 async def get_ohlc(request: ASGIRequest):
-    user = await request.user()
-    if not user.is_authenticated:
+    print(request.user)
+    if not request.user.is_authenticated:
         return http.HttpResponseForbidden()
     else:
         exchange = request.GET.get("exchange")
@@ -54,7 +55,7 @@ async def get_ohlc(request: ASGIRequest):
         pairs = pairs.split(",")
         tasks = list()
         for pair in pairs:
-            tasks += exchange.fetch_ohlcv(symbol=pair, timeframe=timeframe, limit=300)
+            tasks.append(exchange.fetch_ohlcv(symbol=pair, timeframe=timeframe, limit=300))
         try:
             ohlc_data = await asyncio.gather(*tasks)
         except errors.BadSymbol:
@@ -72,7 +73,7 @@ async def get_order_book(request: ASGIRequest):
     pairs = pairs.split(",")
     tasks = list()
     for pair in pairs:
-        tasks += exchange.fetch_order_book(symbol=pair, limit=10000)
+        tasks.append(exchange.fetch_order_book(symbol=pair, limit=10000))
     try:
         order_book_data = await asyncio.gather(*tasks)
     except errors.BadSymbol:
@@ -90,7 +91,7 @@ async def get_public_trades(request: ASGIRequest):
     pairs = pairs.split(",")
     tasks = list()
     for pair in pairs:
-        tasks += exchange.fetch_trades(symbol=pair, limit=1000)
+        tasks.append(exchange.fetch_trades(symbol=pair, limit=1000))
     try:
         data = await asyncio.gather(*tasks)
     except errors.BadSymbol:
