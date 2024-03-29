@@ -105,7 +105,9 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         if hasattr(self, "_serve_client_data_task"):
-            self._serve_client_data_task.cancel()
+            task = self._serve_client_data_task
+            if task:
+                task.cancel()
         await self.close()
         raise exceptions.StopConsumer()
 
@@ -146,7 +148,9 @@ class PrivateStream(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         if hasattr(self, "_serve_client_data_task"):
-            self._serve_client_data_task.cancel()
+            task = self._serve_client_data_task
+            if task:
+                task.cancel()
         await self.close()
         raise exceptions.StopConsumer()
 
