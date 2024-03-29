@@ -6,7 +6,6 @@ from datetime import datetime as dt
 import ccxt.async_support as async_cct
 import django
 from GoogleNews import GoogleNews
-from asgiref.sync import sync_to_async
 from ccxt.async_support import Exchange
 from ccxt.base import errors
 from django import http
@@ -19,6 +18,7 @@ from rest_framework.response import Response
 from cmetrics.backend import models
 from cmetrics.backend import serializers
 from cmetrics.data_source.coinmarketcap import CoinMarketCap
+from cmetrics.utils import helpers
 from cmetrics.utils.helpers import get_exchange_object
 
 COINMARKETCAP = CoinMarketCap()
@@ -127,9 +127,15 @@ async def get_news(request: ASGIRequest):
 
 
 @csrf_exempt
-async def post_new_order(request: ASGIRequest):
+def post_new_order(request: ASGIRequest):
     data = json.loads(request.body.decode("utf-8"))
-    new_order = models.Orders(
+    open_orders = list(
+        models.Orders.objects.filter(
+            expiration_tmstmp__isnull=True, order_status="open"
+        ).values()
+    )
+    open_orders = json.dumps(open_orders, default=str)
+    new_order = dict(
         order_dim_key=str(uuid.uuid4()),
         user_id=data.get("user_id"),
         order_id=str(uuid.uuid4()),
@@ -148,16 +154,24 @@ async def post_new_order(request: ASGIRequest):
         order_price=data.get("order_price") if data.get("order_price") else 1,
         insert_tmstmp=dt.now(),
     )
-    await sync_to_async(new_order.save)()
+    new_order_db = models.Orders(**new_order)
+    open_orders = {**open_orders, **new_order}
+    new_order_db.save()
+    helpers.REDIS.xadd(
+        "{order-monitoring}-open-orders",
+        {"open-orders": json.dumps(open_orders)},
+        maxlen=1,
+        approximate=True,
+    )
     return django.http.JsonResponse("success", safe=False)
 
 
 @csrf_exempt
-async def cancel_order(request: ASGIRequest):
+def cancel_order(request: ASGIRequest):
     data = json.loads(request.body.decode("utf-8"))
     order_dim_key = data.get("order_dim_key")
     order = models.Orders.objects.filter(order_dim_key=order_dim_key)
-    await sync_to_async(order.update)(expiration_tmstmp=dt.now())
+    order.update(expiration_tmstmp=dt.now())
     new_row = models.Orders(
         order_dim_key=str(uuid.uuid4()),
         user_id=order.values("user_id"),
@@ -175,7 +189,7 @@ async def cancel_order(request: ASGIRequest):
         order_price=order.values("order_price"),
         insert_tmstmp=dt.now(),
     )
-    await sync_to_async(new_row.save)()
+    new_row.save()
     return django.http.JsonResponse("success", safe=False)
 
 

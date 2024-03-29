@@ -1,26 +1,18 @@
 import asyncio
 import json
 import logging
-import os
 
-import redis.asyncio as async_redis
 from channels import exceptions
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from dotenv import load_dotenv
 
-from cmetrics.utils.helpers import get_available_redis_streams
+from cmetrics.utils.helpers import get_available_redis_streams, REDIS
 
 load_dotenv()
 
 
 LOG = logging.getLogger(__name__)
-
-REDIS = async_redis.Redis(
-    host=os.environ.get("REDIS_HOST"),
-    port=int(os.environ.get("REDIS_PORT")),
-    decode_responses=True,
-)
 
 
 class PublicLiveDataStream(AsyncWebsocketConsumer):

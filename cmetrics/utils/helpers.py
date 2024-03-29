@@ -7,6 +7,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+REDIS = async_redis.Redis(
+    host=os.environ.get("REDIS_HOST"),
+    port=int(os.environ.get("REDIS_PORT")),
+    decode_responses=True,
+)
+
 
 def get_api_keys(exchange: str, websocket: bool = False) -> dict:
     try:
