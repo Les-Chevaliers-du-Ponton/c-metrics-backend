@@ -154,7 +154,7 @@ def post_new_order(request: ASGIRequest):
         insert_tmstmp=dt.now(),
     )
     new_order_db = models.Orders(**new_order)
-    open_orders = {**open_orders, **new_order}
+    open_orders = open_orders.append(new_order)
     new_order_db.save()
     helpers.REDIS.xadd(
         "{order-monitoring}-open-orders",
