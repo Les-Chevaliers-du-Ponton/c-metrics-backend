@@ -48,5 +48,5 @@ urlpatterns = [
 
 websocket_urlpatterns = [
     path("ws/live_data/", consumers.PublicLiveDataStream.as_asgi()),
-    path("ws/screening/", consumers.ScreeningStream.as_asgi()),
+    path("ws/screening/", consumers.PrivateStream.as_asgi()),
 ]
