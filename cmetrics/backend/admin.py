@@ -1,6 +1,8 @@
 from django.contrib import admin
 
-from models import Orders, Trades
+import models
 
-admin.site.register(Orders)
-admin.site.register(Trades)
+admin.site.register(models.Orders)
+admin.site.register(models.Trades)
+admin.site.register(models.CoinMarketCapMapping)
+admin.site.register(models.CoinMarketCapMetaData)

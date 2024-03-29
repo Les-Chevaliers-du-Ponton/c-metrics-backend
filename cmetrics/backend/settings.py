@@ -19,7 +19,10 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv()
 
+# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+
+
 SECRET_KEY = os.environ["SECRET_KEY"]
 # ALLOWED_HOSTS = ["34.232.77.96", "127.0.0.1", os.environ["HOST"]]
 ALLOWED_HOSTS = ["*"]  # TODO: needs to be updated
@@ -29,11 +32,7 @@ ALLOWED_HOSTS = ["*"]  # TODO: needs to be updated
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
 # Application definition
-
 INSTALLED_APPS = [
     "daphne",
     "django.contrib.admin",
@@ -78,9 +77,7 @@ WSGI_APPLICATION = "cmetrics.backend.wsgi.application"
 ASGI_APPLICATION = "cmetrics.backend.asgi.application"
 
 REST_FRAMEWORK = {
-    'DEFAULT_RENDERER_CLASSES': (
-        'rest_framework.renderers.JSONRenderer',
-    )
+    "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",)
 }
 
 

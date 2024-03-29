@@ -1,12 +1,17 @@
+import asyncio
 import json
 import uuid
 from datetime import datetime as dt
 
-import ccxt
+import ccxt.async_support as async_cct
 import django
 from GoogleNews import GoogleNews
 from asgiref.sync import sync_to_async
 from ccxt.base import errors
+from django import http
+from django.contrib import auth
+from django.contrib.auth.decorators import login_required
+from django.core.handlers.wsgi import WSGIRequest
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets
 from rest_framework.response import Response
@@ -16,7 +21,7 @@ from cmetrics.backend import serializers
 from cmetrics.data_source.coinmarketcap import CoinMarketCap
 from cmetrics.utils.helpers import get_exchange_object
 
-coinmarketcap = CoinMarketCap()
+COINMARKETCAP = CoinMarketCap()
 
 
 @csrf_exempt
@@ -24,60 +29,78 @@ def login_view(request: django.core.handlers.wsgi.WSGIRequest):
     # thomas_bouamoud
     username = request.POST.get("username")
     password = request.POST.get("password")
-    user = django.contrib.auth.authenticate(
-        request, username=username, password=password
-    )
+    user = auth.authenticate(request, username=username, password=password)
     if user is not None:
-        django.contrib.auth.login(request, user)
-        return django.http.JsonResponse({"result": "ok"}, safe=False)
+        auth.login(request, user)
+        return http.JsonResponse({"result": "ok"}, safe=False)
     else:
-        return django.http.HttpResponseForbidden()
+        return http.HttpResponseForbidden()
 
 
-async def get_exchanges(request: django.core.handlers.wsgi.WSGIRequest):
-    data = ccxt.exchanges
+@login_required(login_url="/sign-in/")
+async def get_exchanges(request: WSGIRequest):
+    data = async_cct.exchanges
     return django.http.JsonResponse(data, safe=False)
 
 
-async def get_ohlc(request: django.core.handlers.wsgi.WSGIRequest):
+@login_required(login_url="/sign-in/")
+async def get_ohlc(request: WSGIRequest):
     exchange = request.GET.get("exchange")
     timeframe = request.GET.get("timeframe")
-    pair = request.GET.get("pair")
-    exchange = get_exchange_object(exchange)
+    pairs = request.GET.get("pairs")
+    if not exchange or not timeframe or not pairs:
+        return http.JsonResponse({"error": "Missing parameters"}, status=400)
+    pairs = pairs.split(",")
+    tasks = list()
+    for pair in pairs:
+        tasks += exchange.fetch_ohlcv(symbol=pair, timeframe=timeframe, limit=300)
     try:
-        ohlc_data = await exchange.fetch_ohlcv(
-            symbol=pair, timeframe=timeframe, limit=300
-        )
+        ohlc_data = await asyncio.gather(*tasks)
     except errors.BadSymbol:
         ohlc_data = None
     await exchange.close()
     return django.http.JsonResponse(ohlc_data, safe=False)
 
 
-async def get_order_book(request: django.core.handlers.wsgi.WSGIRequest):
+@login_required(login_url="/sign-in/")
+async def get_order_book(request: WSGIRequest):
     exchange = request.GET.get("exchange")
-    pair = request.GET.get("pair")
+    pairs = request.GET.get("pair")
+    if not exchange or not pairs:
+        return http.JsonResponse({"error": "Missing parameters"}, status=400)
     exchange = get_exchange_object(exchange)
+    pairs = pairs.split(",")
+    tasks = list()
+    for pair in pairs:
+        tasks += exchange.fetch_order_book(symbol=pair, limit=10000)
     try:
-        order_book_data = await exchange.fetch_order_book(symbol=pair, limit=10000)
-    except:
+        order_book_data = await asyncio.gather(*tasks)
+    except errors.BadSymbol:
         order_book_data = None
     await exchange.close()
     return django.http.JsonResponse(order_book_data, safe=False)
 
 
-async def get_public_trades(request: django.core.handlers.wsgi.WSGIRequest):
+@login_required(login_url="/sign-in/")
+async def get_public_trades(request: WSGIRequest):
     exchange = request.GET.get("exchange")
-    pair = request.GET.get("pair")
+    pairs = request.GET.get("pair")
+    if not exchange or not pairs:
+        return http.JsonResponse({"error": "Missing parameters"}, status=400)
     exchange = get_exchange_object(exchange)
+    pairs = pairs.split(",")
+    tasks = list()
+    for pair in pairs:
+        tasks += exchange.fetch_trades(symbol=pair, limit=1000)
     try:
-        data = await exchange.fetch_trades(symbol=pair, limit=1000)
+        data = await asyncio.gather(*tasks)
     except errors.BadSymbol:
         data = None
     await exchange.close()
     return django.http.JsonResponse(data, safe=False)
 
 
+@login_required(login_url="/sign-in/")
 async def get_exchange_markets(request: django.core.handlers.wsgi.WSGIRequest):
     exchange = request.GET.get("exchange")
     exchange = get_exchange_object(exchange)
@@ -86,6 +109,7 @@ async def get_exchange_markets(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse(markets, safe=False)
 
 
+@login_required(login_url="/sign-in/")
 async def get_news(request: django.core.handlers.wsgi.WSGIRequest):
     # TODO: find an alternative approach as Google News gets partially blocked on AWS
     pair = request.GET.get("search_term")
@@ -100,6 +124,7 @@ async def get_news(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse(data, safe=False)
 
 
+@login_required(login_url="/sign-in/")
 @csrf_exempt
 async def post_new_order(request: django.core.handlers.wsgi.WSGIRequest):
     data = json.loads(request.body.decode("utf-8"))
@@ -126,6 +151,7 @@ async def post_new_order(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse("success", safe=False)
 
 
+@login_required(login_url="/sign-in/")
 @csrf_exempt
 async def cancel_order(request: django.core.handlers.wsgi.WSGIRequest):
     data = json.loads(request.body.decode("utf-8"))
@@ -153,27 +179,33 @@ async def cancel_order(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse("success", safe=False)
 
 
+@login_required(login_url="/sign-in/")
 class OrdersViewSet(viewsets.ModelViewSet):
     queryset = models.Orders.objects.filter(expiration_tmstmp__isnull=True)
     serializer_class = serializers.OrdersSerializer
 
 
+@login_required(login_url="/sign-in/")
 class TradesViewSet(viewsets.ModelViewSet):
     queryset = models.Trades.objects.filter(expiration_tmstmp__isnull=True)
     serializer_class = serializers.TradesSerializer
 
 
+@login_required(login_url="/sign-in/")
 class CoinMarketCapMappingViewSet(viewsets.ModelViewSet):
     queryset = models.CoinMarketCapMapping.objects.all()
     serializer_class = serializers.CoinMarketCapMappingSerializer
 
 
+@login_required(login_url="/sign-in/")
 class CoinMarketCapMetaDataViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.CoinMarketCapMetaDataSerializer
 
     def get_queryset(self):
         crypto_coinmarketcap_id = self.request.GET.get("crypto_coinmarketcap_id")
-        queryset = models.CoinMarketCapMetaData.objects.filter(id=crypto_coinmarketcap_id)
+        queryset = models.CoinMarketCapMetaData.objects.filter(
+            id=crypto_coinmarketcap_id
+        )
         return queryset
 
     def list(self, request, *args, **kwargs):

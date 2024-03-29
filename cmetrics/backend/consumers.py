@@ -5,6 +5,8 @@ import os
 
 import redis.asyncio as async_redis
 from channels import exceptions
+from channels.auth import login, get_user
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from dotenv import load_dotenv
 
@@ -33,38 +35,51 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
     - trades
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(args, kwargs)
+        self._serve_client_data_task = None
+        self.client_streams = None
+        self.client_params = None
+        self.errors = None
+
     async def connect(self):
         self.errors = list()
-        self.client_parmas = await self.get_client_params()
+        user = get_user(self.scope)
+        await login(self.scope, user)
+        await database_sync_to_async(self.scope["session"].save)()
+        self.client_params = await self.get_client_params()
         self.client_streams = await self.get_valid_channels()
         if self.client_streams:
             await self.accept()
             if self.errors:
                 await self.send(text_data=json.dumps({"errors": self.errors}))
-            await self.serve_client_data()
+            self._serve_client_data_task = asyncio.create_task(self.serve_client_data())
         else:
             await self.close()
             raise exceptions.StopConsumer()
 
     async def get_client_params(self) -> dict:
-        parmas = dict()
+        params = dict()
         raw_params = self.scope["query_string"].decode("utf-8")
         for raw_param in raw_params.split("&"):
             try:
                 k, v = raw_param.split("=")
-                parmas[k] = v
+                params[k] = v
             except ValueError:
                 pass
-        return parmas
+        return params
 
     async def serve_client_data(self):
-        while True:
-            streams = {stream: "$" for stream in self.client_streams}
-            data = await REDIS.xread(streams=streams, block=0)
-            data = data[0][1]
-            _, latest_record = data[len(data) - 1]
-            await self.send(text_data=json.dumps(latest_record))
-            await asyncio.sleep(0)
+        try:
+            while True:
+                streams = {stream: "$" for stream in self.client_streams}
+                data = await REDIS.xread(streams=streams, block=0)
+                data = data[0][1]
+                _, latest_record = data[len(data) - 1]
+                await self.send(text_data=json.dumps(latest_record))
+                await asyncio.sleep(0)
+        except asyncio.CancelledError:
+            pass
 
     async def get_valid_channels(self) -> list:
         validated_channels = list()
@@ -73,7 +88,7 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
         if not streams:
             LOG.error("The real time service is down")
         else:
-            channels = self.client_parmas.get("channels", "").split(",")
+            channels = self.client_params.get("channels", "").split(",")
             for channel in channels:
                 channel = "{real-time}-" + f"{channel}"
                 if channel in streams:
@@ -87,49 +102,47 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
         return validated_channels
 
     async def disconnect(self, close_code):
-        raise exceptions.StopConsumer()
-
-    async def receive(self, text_data=None):
-        pass
-
-
-class ScreeningStream(AsyncWebsocketConsumer):
-    """
-    Exposes data on:
-    - PROD:  ws://18.205.192.229:8000/ws/screening/
-    """
-
-    async def connect(self):
-        await self.accept()
-        await self.serve_client_data()
-
-    async def serve_client_data(self):
-        while True:
-            streams = {"screening": "$"}
-            data = await REDIS.xread(streams=streams, block=0)
-            data = data[0][1]
-            _, latest_record = data[len(data) - 1]
-            await self.send(text_data=json.dumps(latest_record))
-            await asyncio.sleep(0)
-
-    async def disconnect(self, close_code):
+        if hasattr(self, "_serve_client_data_task"):
+            self._serve_client_data_task.cancel()
         raise exceptions.StopConsumer()
 
     async def receive(self, text_data=None, **kwargs):
         pass
 
 
-class PrivateOrderStream(AsyncWebsocketConsumer):
+class PrivateStream(AsyncWebsocketConsumer):
     """
-    Exposes data on: ws://127.0.0.1:8000/ws/orders/
+    Exposes data on:
+    - PROD:  ws://18.205.192.229:8000/ws/screening/
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(args, kwargs)
+        self._serve_client_data_task = None
 
     async def connect(self):
-        await self.accept()  # TODO: implement authorization
-        await self.serve_client_data()
+        user = get_user(self.scope)
+        await login(self.scope, user)
+        await database_sync_to_async(self.scope["session"].save)()
+        await self.accept()
+        self._serve_client_data_task = asyncio.create_task(self.serve_client_data())
+
+    async def serve_client_data(self):
+        try:
+            while True:
+                streams = {"{screening}": "$"}
+                data = await REDIS.xread(streams=streams, block=0)
+                data = data[0][1]
+                _, latest_record = data[len(data) - 1]
+                await self.send(text_data=json.dumps(latest_record))
+                await asyncio.sleep(0)
+        except asyncio.CancelledError:
+            pass
 
     async def disconnect(self, close_code):
-        pass
+        if hasattr(self, "_serve_client_data_task"):
+            self._serve_client_data_task.cancel()
+        raise exceptions.StopConsumer()
 
-    async def receive(self, text_data=None):
+    async def receive(self, text_data=None, **kwargs):
         pass
