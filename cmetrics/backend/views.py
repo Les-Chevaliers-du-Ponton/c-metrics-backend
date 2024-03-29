@@ -43,25 +43,22 @@ async def get_exchanges(request: ASGIRequest):
 
 
 async def get_ohlc(request: ASGIRequest):
-    print(request.user)
-    if not request.user.is_authenticated:
-        return http.HttpResponseForbidden()
-    else:
-        exchange = request.GET.get("exchange")
-        timeframe = request.GET.get("timeframe")
-        pairs = request.GET.get("pairs")
-        if not exchange or not timeframe or not pairs:
-            return http.JsonResponse({"error": "Missing parameters"}, status=400)
-        pairs = pairs.split(",")
-        tasks = list()
-        for pair in pairs:
-            tasks.append(exchange.fetch_ohlcv(symbol=pair, timeframe=timeframe, limit=300))
-        try:
-            ohlc_data = await asyncio.gather(*tasks)
-        except errors.BadSymbol:
-            ohlc_data = None
-        await exchange.close()
-        return django.http.JsonResponse(ohlc_data, safe=False)
+    exchange = request.GET.get("exchange")
+    timeframe = request.GET.get("timeframe")
+    pairs = request.GET.get("pairs")
+    if not exchange or not timeframe or not pairs:
+        return http.JsonResponse({"error": "Missing parameters"}, status=400)
+    exchange = get_exchange_object(exchange)
+    pairs = pairs.split(",")
+    tasks = list()
+    for pair in pairs:
+        tasks.append(exchange.fetch_ohlcv(symbol=pair, timeframe=timeframe, limit=300))
+    try:
+        ohlc_data = await asyncio.gather(*tasks)
+    except errors.BadSymbol:
+        ohlc_data = None
+    await exchange.close()
+    return django.http.JsonResponse(ohlc_data, safe=False)
 
 
 async def get_order_book(request: ASGIRequest):

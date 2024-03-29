@@ -5,7 +5,6 @@ import os
 
 import redis.asyncio as async_redis
 from channels import exceptions
-from channels.auth import get_user
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from dotenv import load_dotenv
@@ -44,21 +43,23 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
 
     async def connect(self):
         self.errors = list()
-        user = await get_user(self.scope)
-        if user.is_authenticated:
-            self.client_params = await self.get_client_params()
-            self.client_streams = await self.get_valid_channels()
-            if self.client_streams:
-                await self.accept()
-                if self.errors:
-                    await self.send(text_data=json.dumps({"errors": self.errors}))
+        # user = await get_user(self.scope)
+        self.client_params = await self.get_client_params()
+        self.client_streams = await self.get_valid_channels()
+        if self.client_streams:
+            await self.accept()
+            if self.errors:
+                await self.send(text_data=json.dumps({"errors": self.errors}))
+            else:
+                for stream in self.client_streams:
+                    data = await REDIS.xrange(stream, "-", "+")
+                    data = data[0][1]
+                    await self.send(text_data=json.dumps(data))
                 self._serve_client_data_task = asyncio.create_task(
                     self.serve_client_data()
                 )
-            else:
-                await self.disconnect(404)
         else:
-            await self.disconnect(403)
+            await self.disconnect(404)
 
     async def get_client_params(self) -> dict:
         params = dict()
@@ -126,13 +127,10 @@ class PrivateStream(AsyncWebsocketConsumer):
         self._serve_client_data_task = None
 
     async def connect(self):
-        user = await get_user(self.scope)
-        if user.is_authenticated:
-            await database_sync_to_async(self.scope["session"].save)()
-            await self.accept()
-            self._serve_client_data_task = asyncio.create_task(self.serve_client_data())
-        else:
-            await self.disconnect(403)
+        # user = await get_user(self.scope)
+        await database_sync_to_async(self.scope["session"].save)()
+        await self.accept()
+        self._serve_client_data_task = asyncio.create_task(self.serve_client_data())
 
     async def serve_client_data(self):
         try:

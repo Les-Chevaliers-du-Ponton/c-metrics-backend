@@ -16,7 +16,6 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.contrib.auth.decorators import login_required
 from django.urls import path
 
 from cmetrics.backend import consumers
@@ -27,12 +26,12 @@ urlpatterns = [
     path("exchanges/", views.get_exchanges, name="all_exchanges"),
     path(
         "coinmarketcap_info/",
-        login_required(views.CoinMarketCapMappingViewSet.as_view({"get": "list"})),
+        views.CoinMarketCapMappingViewSet.as_view({"get": "list"}),
         name="coin_market_cap_info",
     ),
     path(
         "coinmarketcap_crypto_meta/",
-        login_required(views.CoinMarketCapMetaDataViewSet.as_view({"get": "list"})),
+        views.CoinMarketCapMetaDataViewSet.as_view({"get": "list"}),
         name="coin_market_cap_crypto_meta",
     ),
     path("markets/", views.get_exchange_markets, name="exchange_markets"),
@@ -42,12 +41,12 @@ urlpatterns = [
     path("news/", views.get_news, name="news"),
     path(
         "orders/",
-        login_required(views.OrdersViewSet.as_view({"get": "list"})),
+        views.OrdersViewSet.as_view({"get": "list"}),
         name="orders",
     ),
     path(
         "trades/",
-        login_required(views.TradesViewSet.as_view({"get": "list"})),
+        views.TradesViewSet.as_view({"get": "list"}),
         name="trades",
     ),
     path("new_order/", views.post_new_order, name="new_order"),
