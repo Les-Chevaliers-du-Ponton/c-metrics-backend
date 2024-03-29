@@ -7,6 +7,7 @@ import ccxt.async_support as async_cct
 import django
 from GoogleNews import GoogleNews
 from asgiref.sync import sync_to_async
+from ccxt.async_support import Exchange
 from ccxt.base import errors
 from django import http
 from django.contrib import auth
@@ -42,6 +43,12 @@ async def get_exchanges(request: ASGIRequest):
     return django.http.JsonResponse(data, safe=False)
 
 
+async def _ohlc(pair: str, exchange: Exchange, timeframe: str):
+    return {
+        pair: await exchange.fetch_ohlcv(symbol=pair, timeframe=timeframe, limit=300)
+    }
+
+
 async def get_ohlc(request: ASGIRequest):
     exchange = request.GET.get("exchange")
     timeframe = request.GET.get("timeframe")
@@ -52,7 +59,7 @@ async def get_ohlc(request: ASGIRequest):
     pairs = pairs.split(",")
     tasks = list()
     for pair in pairs:
-        tasks.append(exchange.fetch_ohlcv(symbol=pair, timeframe=timeframe, limit=300))
+        tasks.append(_ohlc(pair=pair, exchange=exchange, timeframe=timeframe))
     try:
         ohlc_data = await asyncio.gather(*tasks)
     except errors.BadSymbol:
