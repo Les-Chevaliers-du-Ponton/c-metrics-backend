@@ -16,6 +16,7 @@ Including another URLconf
 """
 
 from django.contrib import admin
+from django.contrib.auth.decorators import login_required
 from django.urls import path
 
 from cmetrics.backend import consumers
@@ -26,12 +27,12 @@ urlpatterns = [
     path("exchanges/", views.get_exchanges, name="all_exchanges"),
     path(
         "coinmarketcap_info/",
-        views.CoinMarketCapMappingViewSet.as_view({"get": "list"}),
+        login_required(views.CoinMarketCapMappingViewSet.as_view({"get": "list"})),
         name="coin_market_cap_info",
     ),
     path(
         "coinmarketcap_crypto_meta/",
-        views.CoinMarketCapMetaDataViewSet.as_view({"get": "list"}),
+        login_required(views.CoinMarketCapMetaDataViewSet.as_view({"get": "list"})),
         name="coin_market_cap_crypto_meta",
     ),
     path("markets/", views.get_exchange_markets, name="exchange_markets"),
@@ -39,8 +40,8 @@ urlpatterns = [
     path("order_book/", views.get_order_book, name="order_book"),
     path("public_trades/", views.get_public_trades, name="public_trades"),
     path("news/", views.get_news, name="news"),
-    path("orders/", views.OrdersViewSet.as_view({"get": "list"}), name="orders"),
-    path("trades/", views.TradesViewSet.as_view({"get": "list"}), name="trades"),
+    path("orders/", login_required(views.OrdersViewSet.as_view({"get": "list"})), name="orders"),
+    path("trades/", login_required(views.TradesViewSet.as_view({"get": "list"})), name="trades"),
     path("new_order/", views.post_new_order, name="new_order"),
     path("cancel_order/", views.cancel_order, name="cancel_order"),
     path("log_in/", views.login_view, name="log_in"),

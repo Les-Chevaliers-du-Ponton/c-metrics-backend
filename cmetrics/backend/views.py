@@ -179,25 +179,21 @@ async def cancel_order(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse("success", safe=False)
 
 
-@login_required(login_url="/sign-in/")
 class OrdersViewSet(viewsets.ModelViewSet):
     queryset = models.Orders.objects.filter(expiration_tmstmp__isnull=True)
     serializer_class = serializers.OrdersSerializer
 
 
-@login_required(login_url="/sign-in/")
 class TradesViewSet(viewsets.ModelViewSet):
     queryset = models.Trades.objects.filter(expiration_tmstmp__isnull=True)
     serializer_class = serializers.TradesSerializer
 
 
-@login_required(login_url="/sign-in/")
 class CoinMarketCapMappingViewSet(viewsets.ModelViewSet):
     queryset = models.CoinMarketCapMapping.objects.all()
     serializer_class = serializers.CoinMarketCapMappingSerializer
 
 
-@login_required(login_url="/sign-in/")
 class CoinMarketCapMetaDataViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.CoinMarketCapMetaDataSerializer
 
