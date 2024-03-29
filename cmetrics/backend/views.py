@@ -29,7 +29,7 @@ def login_view(request: django.core.handlers.wsgi.WSGIRequest):
     # thomas_bouamoud
     username = request.POST.get("username")
     password = request.POST.get("password")
-    user = auth.authenticate(request, username=username, password=password)
+    user = auth.aauthenticate(request, username=username, password=password)
     if user is not None:
         auth.login(request, user)
         return http.JsonResponse({"result": "ok"}, safe=False)
@@ -37,32 +37,36 @@ def login_view(request: django.core.handlers.wsgi.WSGIRequest):
         return http.HttpResponseForbidden()
 
 
-@login_required
+
 async def get_exchanges(request: WSGIRequest):
     data = async_cct.exchanges
     return django.http.JsonResponse(data, safe=False)
 
 
-@login_required
+
 async def get_ohlc(request: WSGIRequest):
-    exchange = request.GET.get("exchange")
-    timeframe = request.GET.get("timeframe")
-    pairs = request.GET.get("pairs")
-    if not exchange or not timeframe or not pairs:
-        return http.JsonResponse({"error": "Missing parameters"}, status=400)
-    pairs = pairs.split(",")
-    tasks = list()
-    for pair in pairs:
-        tasks += exchange.fetch_ohlcv(symbol=pair, timeframe=timeframe, limit=300)
-    try:
-        ohlc_data = await asyncio.gather(*tasks)
-    except errors.BadSymbol:
-        ohlc_data = None
-    await exchange.close()
-    return django.http.JsonResponse(ohlc_data, safe=False)
+    user = await request.auser()
+    if not user.is_authenticated:
+        return http.HttpResponseForbidden()
+    else:
+        exchange = request.GET.get("exchange")
+        timeframe = request.GET.get("timeframe")
+        pairs = request.GET.get("pairs")
+        if not exchange or not timeframe or not pairs:
+            return http.JsonResponse({"error": "Missing parameters"}, status=400)
+        pairs = pairs.split(",")
+        tasks = list()
+        for pair in pairs:
+            tasks += exchange.fetch_ohlcv(symbol=pair, timeframe=timeframe, limit=300)
+        try:
+            ohlc_data = await asyncio.gather(*tasks)
+        except errors.BadSymbol:
+            ohlc_data = None
+        await exchange.close()
+        return django.http.JsonResponse(ohlc_data, safe=False)
 
 
-@login_required
+
 async def get_order_book(request: WSGIRequest):
     exchange = request.GET.get("exchange")
     pairs = request.GET.get("pair")
@@ -81,7 +85,7 @@ async def get_order_book(request: WSGIRequest):
     return django.http.JsonResponse(order_book_data, safe=False)
 
 
-@login_required
+
 async def get_public_trades(request: WSGIRequest):
     exchange = request.GET.get("exchange")
     pairs = request.GET.get("pair")
@@ -100,7 +104,7 @@ async def get_public_trades(request: WSGIRequest):
     return django.http.JsonResponse(data, safe=False)
 
 
-@login_required
+
 async def get_exchange_markets(request: django.core.handlers.wsgi.WSGIRequest):
     exchange = request.GET.get("exchange")
     exchange = get_exchange_object(exchange)
@@ -109,7 +113,7 @@ async def get_exchange_markets(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse(markets, safe=False)
 
 
-@login_required
+
 async def get_news(request: django.core.handlers.wsgi.WSGIRequest):
     # TODO: find an alternative approach as Google News gets partially blocked on AWS
     pair = request.GET.get("search_term")
@@ -124,7 +128,7 @@ async def get_news(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse(data, safe=False)
 
 
-@login_required
+
 @csrf_exempt
 async def post_new_order(request: django.core.handlers.wsgi.WSGIRequest):
     data = json.loads(request.body.decode("utf-8"))
@@ -151,7 +155,7 @@ async def post_new_order(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse("success", safe=False)
 
 
-@login_required
+
 @csrf_exempt
 async def cancel_order(request: django.core.handlers.wsgi.WSGIRequest):
     data = json.loads(request.body.decode("utf-8"))
