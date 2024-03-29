@@ -134,7 +134,6 @@ def post_new_order(request: ASGIRequest):
             expiration_tmstmp__isnull=True, order_status="open"
         ).values()
     )
-    open_orders = json.dumps(open_orders, default=str)
     new_order = dict(
         order_dim_key=str(uuid.uuid4()),
         user_id=data.get("user_id"),
@@ -159,7 +158,7 @@ def post_new_order(request: ASGIRequest):
     new_order_db.save()
     helpers.REDIS.xadd(
         "{order-monitoring}-open-orders",
-        {"open-orders": json.dumps(open_orders)},
+        {"open-orders": json.dumps(open_orders, default=str)},
         maxlen=1,
         approximate=True,
     )
