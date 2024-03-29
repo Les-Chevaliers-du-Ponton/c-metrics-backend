@@ -10,8 +10,7 @@ from asgiref.sync import sync_to_async
 from ccxt.base import errors
 from django import http
 from django.contrib import auth
-from django.contrib.auth.decorators import login_required
-from django.core.handlers.wsgi import WSGIRequest
+from django.core.handlers.asgi import ASGIRequest
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets
 from rest_framework.response import Response
@@ -25,7 +24,7 @@ COINMARKETCAP = CoinMarketCap()
 
 
 @csrf_exempt
-def login_view(request: django.core.handlers.wsgi.WSGIRequest):
+def login_view(request: ASGIRequest):
     # thomas_bouamoud
     username = request.POST.get("username")
     password = request.POST.get("password")
@@ -37,15 +36,13 @@ def login_view(request: django.core.handlers.wsgi.WSGIRequest):
         return http.HttpResponseForbidden()
 
 
-
-async def get_exchanges(request: WSGIRequest):
+async def get_exchanges(request: ASGIRequest):
     data = async_cct.exchanges
     return django.http.JsonResponse(data, safe=False)
 
 
-
-async def get_ohlc(request: WSGIRequest):
-    user = await request.auser()
+async def get_ohlc(request: ASGIRequest):
+    user = await request.user()
     if not user.is_authenticated:
         return http.HttpResponseForbidden()
     else:
@@ -66,8 +63,7 @@ async def get_ohlc(request: WSGIRequest):
         return django.http.JsonResponse(ohlc_data, safe=False)
 
 
-
-async def get_order_book(request: WSGIRequest):
+async def get_order_book(request: ASGIRequest):
     exchange = request.GET.get("exchange")
     pairs = request.GET.get("pair")
     if not exchange or not pairs:
@@ -85,8 +81,7 @@ async def get_order_book(request: WSGIRequest):
     return django.http.JsonResponse(order_book_data, safe=False)
 
 
-
-async def get_public_trades(request: WSGIRequest):
+async def get_public_trades(request: ASGIRequest):
     exchange = request.GET.get("exchange")
     pairs = request.GET.get("pair")
     if not exchange or not pairs:
@@ -104,8 +99,7 @@ async def get_public_trades(request: WSGIRequest):
     return django.http.JsonResponse(data, safe=False)
 
 
-
-async def get_exchange_markets(request: django.core.handlers.wsgi.WSGIRequest):
+async def get_exchange_markets(request: ASGIRequest):
     exchange = request.GET.get("exchange")
     exchange = get_exchange_object(exchange)
     markets = await exchange.load_markets()
@@ -113,8 +107,7 @@ async def get_exchange_markets(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse(markets, safe=False)
 
 
-
-async def get_news(request: django.core.handlers.wsgi.WSGIRequest):
+async def get_news(request: ASGIRequest):
     # TODO: find an alternative approach as Google News gets partially blocked on AWS
     pair = request.GET.get("search_term")
     googlenews = GoogleNews()
@@ -128,9 +121,8 @@ async def get_news(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse(data, safe=False)
 
 
-
 @csrf_exempt
-async def post_new_order(request: django.core.handlers.wsgi.WSGIRequest):
+async def post_new_order(request: ASGIRequest):
     data = json.loads(request.body.decode("utf-8"))
     new_order = models.Orders(
         order_dim_key=str(uuid.uuid4()),
@@ -155,9 +147,8 @@ async def post_new_order(request: django.core.handlers.wsgi.WSGIRequest):
     return django.http.JsonResponse("success", safe=False)
 
 
-
 @csrf_exempt
-async def cancel_order(request: django.core.handlers.wsgi.WSGIRequest):
+async def cancel_order(request: ASGIRequest):
     data = json.loads(request.body.decode("utf-8"))
     order_dim_key = data.get("order_dim_key")
     order = models.Orders.objects.filter(order_dim_key=order_dim_key)
