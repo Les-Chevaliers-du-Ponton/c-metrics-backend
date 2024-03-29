@@ -42,7 +42,7 @@ async def get_exchanges(request: ASGIRequest):
 
 
 async def get_ohlc(request: ASGIRequest):
-    user = await request.user()
+    print(request)
     if not user.is_authenticated:
         return http.HttpResponseForbidden()
     else:
