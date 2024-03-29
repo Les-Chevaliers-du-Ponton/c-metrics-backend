@@ -44,7 +44,7 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
 
     async def connect(self):
         self.errors = list()
-        user = get_user(self.scope)
+        user = await get_user(self.scope)
         await login(self.scope, user)
         await database_sync_to_async(self.scope["session"].save)()
         self.client_params = await self.get_client_params()
@@ -121,7 +121,7 @@ class PrivateStream(AsyncWebsocketConsumer):
         self._serve_client_data_task = None
 
     async def connect(self):
-        user = get_user(self.scope)
+        user = await get_user(self.scope)
         await login(self.scope, user)
         await database_sync_to_async(self.scope["session"].save)()
         await self.accept()
