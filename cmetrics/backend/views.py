@@ -28,7 +28,7 @@ def login_view(request: ASGIRequest):
     # thomas_bouamoud
     username = request.POST.get("username")
     password = request.POST.get("password")
-    user = auth.aauthenticate(request, username=username, password=password)
+    user = auth.authenticate(request, username=username, password=password)
     if user is not None:
         auth.login(request, user)
         return http.JsonResponse({"result": "ok"}, safe=False)
@@ -42,25 +42,25 @@ async def get_exchanges(request: ASGIRequest):
 
 
 async def get_ohlc(request: ASGIRequest):
-    print(request)
-    # if not user.is_authenticated:
-    #     return http.HttpResponseForbidden()
-    # else:
-    #     exchange = request.GET.get("exchange")
-    #     timeframe = request.GET.get("timeframe")
-    #     pairs = request.GET.get("pairs")
-    #     if not exchange or not timeframe or not pairs:
-    #         return http.JsonResponse({"error": "Missing parameters"}, status=400)
-    #     pairs = pairs.split(",")
-    #     tasks = list()
-    #     for pair in pairs:
-    #         tasks += exchange.fetch_ohlcv(symbol=pair, timeframe=timeframe, limit=300)
-    #     try:
-    #         ohlc_data = await asyncio.gather(*tasks)
-    #     except errors.BadSymbol:
-    #         ohlc_data = None
-    #     await exchange.close()
-    #     return django.http.JsonResponse(ohlc_data, safe=False)
+    user = await request.user()
+    if not user.is_authenticated:
+        return http.HttpResponseForbidden()
+    else:
+        exchange = request.GET.get("exchange")
+        timeframe = request.GET.get("timeframe")
+        pairs = request.GET.get("pairs")
+        if not exchange or not timeframe or not pairs:
+            return http.JsonResponse({"error": "Missing parameters"}, status=400)
+        pairs = pairs.split(",")
+        tasks = list()
+        for pair in pairs:
+            tasks += exchange.fetch_ohlcv(symbol=pair, timeframe=timeframe, limit=300)
+        try:
+            ohlc_data = await asyncio.gather(*tasks)
+        except errors.BadSymbol:
+            ohlc_data = None
+        await exchange.close()
+        return django.http.JsonResponse(ohlc_data, safe=False)
 
 
 async def get_order_book(request: ASGIRequest):
