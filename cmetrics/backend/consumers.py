@@ -5,7 +5,7 @@ import os
 
 import redis.asyncio as async_redis
 from channels import exceptions
-from channels.auth import login, get_user
+from channels.auth import get_user
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from dotenv import load_dotenv
@@ -45,18 +45,20 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
     async def connect(self):
         self.errors = list()
         user = await get_user(self.scope)
-        await login(self.scope, user)
-        await database_sync_to_async(self.scope["session"].save)()
-        self.client_params = await self.get_client_params()
-        self.client_streams = await self.get_valid_channels()
-        if self.client_streams:
-            await self.accept()
-            if self.errors:
-                await self.send(text_data=json.dumps({"errors": self.errors}))
-            self._serve_client_data_task = asyncio.create_task(self.serve_client_data())
+        if user.is_authenticated:
+            self.client_params = await self.get_client_params()
+            self.client_streams = await self.get_valid_channels()
+            if self.client_streams:
+                await self.accept()
+                if self.errors:
+                    await self.send(text_data=json.dumps({"errors": self.errors}))
+                self._serve_client_data_task = asyncio.create_task(
+                    self.serve_client_data()
+                )
+            else:
+                await self.disconnect(404)
         else:
-            await self.close()
-            raise exceptions.StopConsumer()
+            await self.disconnect(403)
 
     async def get_client_params(self) -> dict:
         params = dict()
@@ -104,6 +106,7 @@ class PublicLiveDataStream(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         if hasattr(self, "_serve_client_data_task"):
             self._serve_client_data_task.cancel()
+        await self.close()
         raise exceptions.StopConsumer()
 
     async def receive(self, text_data=None, **kwargs):
@@ -122,10 +125,12 @@ class PrivateStream(AsyncWebsocketConsumer):
 
     async def connect(self):
         user = await get_user(self.scope)
-        await login(self.scope, user)
-        await database_sync_to_async(self.scope["session"].save)()
-        await self.accept()
-        self._serve_client_data_task = asyncio.create_task(self.serve_client_data())
+        if user.is_authenticated:
+            await database_sync_to_async(self.scope["session"].save)()
+            await self.accept()
+            self._serve_client_data_task = asyncio.create_task(self.serve_client_data())
+        else:
+            await self.disconnect(403)
 
     async def serve_client_data(self):
         try:
@@ -142,6 +147,7 @@ class PrivateStream(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         if hasattr(self, "_serve_client_data_task"):
             self._serve_client_data_task.cancel()
+        await self.close()
         raise exceptions.StopConsumer()
 
     async def receive(self, text_data=None, **kwargs):

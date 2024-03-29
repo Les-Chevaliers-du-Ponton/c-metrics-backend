@@ -40,8 +40,16 @@ urlpatterns = [
     path("order_book/", views.get_order_book, name="order_book"),
     path("public_trades/", views.get_public_trades, name="public_trades"),
     path("news/", views.get_news, name="news"),
-    path("orders/", login_required(views.OrdersViewSet.as_view({"get": "list"})), name="orders"),
-    path("trades/", login_required(views.TradesViewSet.as_view({"get": "list"})), name="trades"),
+    path(
+        "orders/",
+        login_required(views.OrdersViewSet.as_view({"get": "list"})),
+        name="orders",
+    ),
+    path(
+        "trades/",
+        login_required(views.TradesViewSet.as_view({"get": "list"})),
+        name="trades",
+    ),
     path("new_order/", views.post_new_order, name="new_order"),
     path("cancel_order/", views.cancel_order, name="cancel_order"),
     path("log_in/", views.login_view, name="log_in"),
